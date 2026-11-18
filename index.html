@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAMPANG GAP FOOD CROPS INTELLIGENCE</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-thai@latest/thai-400-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-thai@latest/thai-600-normal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-thai@latest/thai-700-normal.css">
+<style>
+:root {
+  --deep-teal: #0d4f4f;
+  --medium-teal: #1a7a7a;
+  --light-teal: #e0f2f1;
+  --accent-orange: #f57c00;
+  --white: #ffffff;
+  --bg-gray: #f5f7fa;
+  --text-dark: #1a2332;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+}
+* { font-family: 'Noto Sans Thai', sans-serif; box-sizing: border-box; }
+body { background: var(--bg-gray); color: var(--text-dark); margin: 0; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.sidebar { width: 260px; background: linear-gradient(180deg, var(--deep-teal) 0%, #0a3d3d 100%); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 50; transition: transform 0.3s; }
+.sidebar-item { padding: 12px 20px; color: rgba(255,255,255,0.7); cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px; transition: all 0.2s; border-left: 3px solid transparent; }
+.sidebar-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.sidebar-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: var(--accent-orange); }
+.sidebar-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+.main-content { margin-left: 260px; min-height: 100vh; }
+.top-nav { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 40; }
+.kpi-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.kpi-value { font-size: 28px; font-weight: 700; color: var(--deep-teal); font-variant-numeric: tabular-nums; }
+.kpi-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.kpi-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.chart-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border); }
+.chart-title { font-size: 15px; font-weight: 600; color: var(--text-dark); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.cluster-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid var(--border); cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+.cluster-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.filter-select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-dark); min-width: 140px; }
+.filter-select:focus { outline: none; border-color: var(--medium-teal); box-shadow: 0 0 0 3px rgba(26,122,122,0.1); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { background: var(--light-teal); padding: 10px 12px; text-align: left; font-weight: 600; color: var(--deep-teal); border-bottom: 2px solid var(--medium-teal); white-space: nowrap; }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.data-table tr:hover { background: #f8fffe; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.module-section { display: none; padding: 24px; }
+.module-section.active { display: block; }
+.loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+.spinner { width: 48px; height: 48px; border: 4px solid var(--light-teal); border-top-color: var(--medium-teal); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.insight-card { background: linear-gradient(135deg, var(--light-teal) 0%, #fff 100%); border-radius: 12px; padding: 20px; border-left: 4px solid var(--medium-teal); }
+.status-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.status-certified { background: #d4edda; color: #155724; }
+.status-pending { background: #fff3cd; color: #856404; }
+.btn-primary { background: var(--medium-teal); color: #fff; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s; }
+.btn-primary:hover { background: var(--deep-teal); }
+.btn-outline { background: transparent; color: var(--medium-teal); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--medium-teal); cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.btn-outline:hover { background: var(--light-teal); }
+.footer { background: var(--deep-teal); color: rgba(255,255,255,0.8); padding: 24px; margin-left: 0; }
+.notification-dot { width: 8px; height: 8px; background: var(--accent-orange); border-radius: 50%; position: absolute; top: -2px; right: -2px; }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: 11px; font-weight: 700; color: #fff; }
+.rank-1 { background: linear-gradient(135deg, #ffd700, #ffb300); }
+.rank-2 { background: linear-gradient(135deg, #c0c0c0, #9e9e9e); }
+.rank-3 { background: linear-gradient(135deg, #cd7f32, #a0522d); }
+.rank-default { background: var(--medium-teal); }
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; }
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <p style="margin-top:16px;color:var(--deep-teal);font-weight:600;">กำลังโหลดข้อมูล...</p>
+  <p style="margin-top:8px;color:var(--text-muted);font-size:13px;">LAMPANG GAP FOOD CROPS INTELLIGENCE</p>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar scrollbar-thin" id="sidebar">
+  <div style="padding:20px;border-bottom:1px solid rgba(255,255,255,0.1);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:36px;height:36px;background:var(--accent-orange);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div style="color:#fff;font-weight:700;font-size:13px;line-height:1.3;">LAMPANG GAP</div>
+        <div style="color:rgba(255,255,255,0.6);font-size:10px;">FOOD CROPS INTELLIGENCE</div>
+      </div>
+    </div>
+  </div>
+  <nav style="padding:12px 0;">
+    <div class="sidebar-item active" data-module="overview" onclick="switchModule('overview')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+      ภาพรวมระบบ
+    </div>
+    <div class="sidebar-item" data-module="clusters" onclick="switchModule('clusters')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      กลุ่มตลาดสินค้า
+    </div>
+    <div class="sidebar-item" data-module="production" onclick="switchModule('production')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      ภาพรวมการผลิต
+    </div>
+    <div class="sidebar-item" data-module="geographic" onclick="switchModule('geographic')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+      ภูมิศาสตร์การผลิต
+    </div>
+    <div class="sidebar-item" data-module="strategy" onclick="switchModule('strategy')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      กลยุทธ์การตลาด
+    </div>
+    <div class="sidebar-item" data-module="insight" onclick="switchModule('insight')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      ข้อมูลเชิงลึก
+    </div>
+    <div class="sidebar-item" data-module="certification" onclick="switchModule('certification')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      การรับรอง GAP
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:12px;padding-top:12px;">
+      <div class="sidebar-item" onclick="exportData()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        ส่งออกข้อมูล
+      </div>
+    </div>
+  </nav>
+  <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);margin-top:auto;">
+    <div style="color:rgba(255,255,255,0.5);font-size:10px;">ข้อมูลอัปเดต ณ</div>
+    <div style="color:rgba(255,255,255,0.8);font-size:11px;font-weight:600;">16 พฤศจิกายน 2569</div>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main-content">
+  <div class="top-nav">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <button onclick="toggleSidebar()" style="display:none;background:none;border:none;cursor:pointer;" id="menuBtn">
+        <svg width="24" height="24" fill="none" stroke="var(--text-dark)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div>
+        <h1 style="font-size:16px;font-weight:700;color:var(--deep-teal);margin:0;">LAMPANG GAP FOOD CROPS INTELLIGENCE</h1>
+        <p style="font-size:11px;color:var(--text-muted);margin:2px 0 0;">ระบบสารสนเทศอัจฉริยะด้านการรับรองมาตรฐาน GAP พืชอาหารจังหวัดลำปาง</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="position:relative;cursor:pointer;" onclick="toggleNotifications()">
+        <svg width="20" height="20" fill="none" stroke="var(--text-muted)" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="notification-dot" id="notifDot"></span>
+      </div>
+      <div style="width:32px;height:32px;background:var(--medium-teal);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;">AD</div>
+    </div>
+  </div>
+
+  <!-- Global Filters -->
+  <div style="background:#fff;border-bottom:1px solid var(--border);padding:12px 24px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;" id="globalFilters">
+    <span style="font-size:12px;font-weight:600;color:var(--text-muted);">ตัวกรอง:</span>
+    <select class="filter-select" id="filterMarketGroup" onchange="applyFilters()"><option value="">กลุ่มตลาดทั้งหมด</option></select>
+    <select class="filter-select" id="filterCrop" onchange="applyFilters()"><option value="">ชนิดพืชทั้งหมด</option></select>
+    <select class="filter-select" id="filterDistrict" onchange="applyFilters()"><option value="">อำเภอทั้งหมด</option></select>
+    <select class="filter-select" id="filterSubdistrict" onchange="applyFilters()"><option value="">ตำบลทั้งหมด</option></select>
+    <select class="filter-select" id="filterStatus" onchange="applyFilters()"><option value="">สถานะทั้งหมด</option></select>
+    <select class="filter-select" id="filterYear" onchange="applyFilters()"><option value="">ปีทั้งหมด</option></select>
+    <button class="btn-outline" onclick="resetFilters()" style="font-size:12px;padding:6px 12px;">รีเซ็ต</button>
+  </div>
+
+  <!-- MODULE: Overview -->
+  <div class="module-section active" id="module-overview">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">ภาพรวมระบบสารสนเทศ GAP พืชอาหารจังหวัดลำปาง</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Executive Intelligence Summary — สรุปข้อมูลสำหรับผู้บริหาร</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;" id="overviewKPIs"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:16px;margin-bottom:24px;">
+      <div class="chart-card">
+        <div class="chart-title">สัดส่วนกลุ่มตลาด (พื้นที่ปลูก)</div>
+        <canvas id="overviewDonut" height="250"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top 10 ชนิดพืช (พื้นที่ปลูก)</div>
+        <canvas id="overviewBar" height="250"></canvas>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px;" id="execInsights"></div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">การกระจายตัวการผลิตรายอำเภอ</div>
+      <canvas id="overviewDistrictChart" height="300"></canvas>
+    </div>
+  </div>
+
+  <!-- MODULE: Market Clusters -->
+  <div class="module-section" id="module-clusters">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">กลุ่มตลาดสินค้าเกษตร (Market Clusters)</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">วิเคราะห์โครงสร้างการผลิตจำแนกตาม 6 กลุ่มตลาดสินค้าเกษตร</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:24px;" id="clusterCards"></div>
+    <div id="clusterDetail" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button class="btn-outline" onclick="hideClusterDetail()">← กลับ</button>
+        <h3 style="font-size:18px;font-weight:700;color:var(--deep-teal);margin:0;" id="clusterDetailTitle"></h3>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;" id="clusterKPIs"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div class="chart-card"><div class="chart-title">ชนิดพืชในกลุ่ม</div><canvas id="clusterCropChart" height="280"></canvas></div>
+        <div class="chart-card"><div class="chart-title">การกระจายตัวรายอำเภอ</div><canvas id="clusterDistrictChart" height="280"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">ตารางรายละเอียดชนิดพืช</div>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="clusterCropTable">
+            <thead><tr><th>อันดับ</th><th>ชื่อพืช</th><th>จำนวนเกษตรกร</th><th>จำนวนแปลง</th><th>พื้นที่ปลูก (ไร่)</th><th>ปริมาณผลผลิต (กก.)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="clusterOverview">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div class="chart-card"><div class="chart-title">เปรียบเทียบพื้นที่ปลูกรายกลุ่มตลาด</div><canvas id="clusterAreaChart" height="300"></canvas></div>
+        <div class="chart-card"><div class="chart-title">เปรียบเทียบปริมาณผลผลิตรายกลุ่มตลาด</div><canvas id="clusterOutputChart" height="300"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Treemap ชนิดพืชตามกลุ่มตลาด</div>
+        <div id="treemapContainer" style="display:grid;gap:2px;min-height:300px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE: Production -->
+  <div class="module-section" id="module-production">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">ภาพรวมการผลิตพืชอาหาร GAP จังหวัดลำปาง</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Provincial GAP Production Overview</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;" id="productionKPIs"></div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="chart-title" style="margin:0;">Top 10 ชนิดพืช</div>
+        <select class="filter-select" id="top10Criteria" onchange="updateTop10()">
+          <option value="farmers">จัดอันดับตามจำนวนเกษตรกร</option>
+          <option value="plots">จัดอันดับตามจำนวนแปลง</option>
+          <option value="area">จัดอันดับตามพื้นที่ปลูก</option>
+          <option value="output">จัดอันดับตามปริมาณผลผลิต</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <canvas id="top10Chart" height="350"></canvas>
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="top10Table">
+            <thead><tr><th>อันดับ</th><th>ชื่อพืช</th><th>กลุ่มตลาด</th><th>เกษตรกร</th><th>แปลง</th><th>พื้นที่ (ไร่)</th><th>ผลผลิต (กก.)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="chart-card"><div class="chart-title">สัดส่วนพื้นที่ปลูกรายกลุ่มตลาด</div><canvas id="prodDonut" height="280"></canvas></div>
+      <div class="chart-card"><div class="chart-title">สัดส่วนปริมาณผลผลิตรายกลุ่มตลาด</div><canvas id="prodOutputDonut" height="280"></canvas></div>
+    </div>
+  </div>
+
+  <!-- MODULE: Geographic -->
+  <div class="module-section" id="module-geographic">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">ภูมิศาสตร์การผลิต (Geographic Intelligence)</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">วิเคราะห์การกระจายตัวของการผลิตพืชอาหาร GAP ระดับอำเภอและตำบล</p>
+    </div>
+
+    <!-- แผนที่ความเข้มข้น -->
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">🗺️ แผนที่ความเข้มข้นการผลิตรายอำเภอ</div>
+      <div id="geoMap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:16px;"></div>
+    </div>
+
+    <!-- ตารางเปรียบเทียบ 13 อำเภอ -->
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">📊 ตารางเปรียบเทียบ 13 อำเภอ</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="districtTable">
+          <thead><tr><th>อำเภอ</th><th>เกษตรกร</th><th>แปลง</th><th>ชนิดพืช</th><th>พื้นที่ (ไร่)</th><th>ผลผลิต (กก.)</th><th>กลุ่มตลาดหลัก</th><th>พืชหลัก</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ตาราง Top 15 ตำบล (NEW) -->
+    <div class="chart-card" style="margin-bottom:24px;border-top:4px solid var(--accent-orange);">
+      <div class="chart-title" style="color:var(--accent-orange);">
+        🏆 Top 15 ตำบล — ฐานการผลิตพืชอาหาร GAP (ระดับตำบล)
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-10px 0 16px;line-height:1.5;">
+        แสดง 15 ตำบลที่มีพื้นที่ปลูกสูงสุด จำแนกตามจำนวนเกษตรกร จำนวนแปลง ชนิดพืช พื้นที่ปลูก ปริมาณผลผลิต กลุ่มตลาดหลัก และพืชหลัก
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="topSubdistrictTable">
+          <thead>
+            <tr>
+              <th style="text-align:center;width:60px;">อันดับ</th>
+              <th>ตำบล</th>
+              <th>อำเภอ</th>
+              <th style="text-align:right;">เกษตรกร</th>
+              <th style="text-align:right;">แปลง</th>
+              <th style="text-align:right;">ชนิดพืช</th>
+              <th style="text-align:right;">พื้นที่ (ไร่)</th>
+              <th style="text-align:right;">ผลผลิต (กก.)</th>
+              <th>กลุ่มตลาดหลัก</th>
+              <th>พืชหลัก</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- กราฟแยก 2 กราฟ: พื้นที่ปลูก และ ปริมาณการผลิต -->
+    <div style="display:grid;grid-template-columns:1fr;gap:20px;">
+      <div class="chart-card" style="border-top:4px solid var(--medium-teal);">
+        <div class="chart-title" style="color:var(--medium-teal);">
+          <svg width="18" height="18" fill="var(--medium-teal)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+          การกระจายพื้นที่ปลูกรายอำเภอ (Cultivated Area by District)
+        </div>
+        <canvas id="geoAreaChart" height="220"></canvas>
+      </div>
+
+      <div class="chart-card" style="border-top:4px solid var(--accent-orange);">
+        <div class="chart-title" style="color:var(--accent-orange);">
+          <svg width="18" height="18" fill="var(--accent-orange)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+          การกระจายปริมาณผลผลิตรายอำเภอ (Production Volume by District)
+        </div>
+        <canvas id="geoOutputChart" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE: Strategy -->
+  <div class="module-section" id="module-strategy">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">กลยุทธ์การพัฒนาการผลิตตามกลุ่มตลาด</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Market-Driven Production Strategy</p>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">Strategic Matrix</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="strategyMatrix">
+          <thead><tr><th>กลุ่มตลาด</th><th>ชนิดพืช</th><th>เกษตรกร</th><th>แปลง</th><th>พื้นที่ (ไร่)</th><th>ผลผลิต (กก.)</th><th>พื้นที่ผลิตหลัก</th><th>แนวทางกลยุทธ์</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="strategyCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:16px;"></div>
+  </div>
+
+  <!-- MODULE: Insight -->
+  <div class="module-section" id="module-insight">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">ข้อมูลเชิงลึก GAP</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Data Insight & Analytics</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+      <div class="chart-card"><div class="chart-title">โครงสร้างชนิดพืช</div><div id="insightTreemap" style="display:flex;flex-wrap:wrap;gap:4px;min-height:200px;"></div></div>
+      <div class="chart-card"><div class="chart-title">ผลผลิตต่อไร่ แยกตามกลุ่มตลาด</div><canvas id="yieldChart" height="280"></canvas></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">แนวโน้มการรับรอง GAP รายเดือน</div>
+      <canvas id="certTrendChart" height="200"></canvas>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:24px;" id="insightCards"></div>
+    <div class="chart-card">
+      <div class="chart-title">ตัวชี้วัดประสิทธิภาพการผลิต</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="efficiencyTable">
+          <thead><tr><th>กลุ่มตลาด</th><th>พื้นที่เฉลี่ย/แปลง (ไร่)</th><th>ผลผลิตเฉลี่ย/แปลง (กก.)</th><th>ผลผลิต/ไร่ (กก.)</th><th>แปลงเฉลี่ย/ชนิดพืช</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULE: Certification -->
+  <div class="module-section" id="module-certification">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--deep-teal);margin:0;">ระบบสารสนเทศการรับรองมาตรฐาน GAP</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">GAP Certification Management & Intelligence</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;" id="certKPIs"></div>
+    <div class="chart-card" style="margin-bottom:24px;border-left:4px solid var(--accent-orange);">
+      <div class="chart-title" style="color:var(--accent-orange);">สถานะอายุใบรับรอง GAP</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;" id="expiryAlerts"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+      <div class="chart-card"><div class="chart-title">จำนวนการรับรองรายปี</div><canvas id="certYearChart" height="250"></canvas></div>
+      <div class="chart-card"><div class="chart-title">สถานะการรับรอง</div><canvas id="certStatusChart" height="250"></canvas></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <div class="chart-title">ค้นหาข้อมูลแปลง GAP (Advanced Search)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;">
+        <input type="text" class="filter-select" id="searchName" placeholder="รหัสแปลง / ชื่อพืช" style="width:100%;">
+        <select class="filter-select" id="searchCrop"><option value="">ชนิดพืช</option></select>
+        <select class="filter-select" id="searchGroup"><option value="">กลุ่มตลาด</option></select>
+        <select class="filter-select" id="searchDistrict"><option value="">อำเภอ</option></select>
+        <select class="filter-select" id="searchStatus"><option value="">สถานะ</option></select>
+        <button class="btn-primary" onclick="searchPlots()">ค้นหา</button>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+        <table class="data-table" id="searchResults">
+          <thead><tr><th>รหัสแปลง</th><th>ชนิดพืช</th><th>กลุ่มตลาด</th><th>อำเภอ</th><th>ตำบล</th><th>พื้นที่ (ไร่)</th><th>ผลผลิต (กก.)</th><th>สถานะ</th><th>รายละเอียด</th></tr></thead>
+          <tbody><tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">กรุณาระบุเงื่อนไขการค้นหา</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer" style="margin-left:260px;">
+  <div style="max-width:1200px;margin:0 auto;text-align:center;">
+    <p style="font-size:13px;font-weight:600;color:#fff;margin:0 0 8px;">LAMPANG GAP FOOD CROPS INTELLIGENCE</p>
+    <p style="font-size:11px;margin:0 0 4px;">ที่มา: ศูนย์วิจัยและพัฒนาการเกษตรลำปาง กรมวิชาการเกษตร</p>
+    <p style="font-size:11px;margin:0 0 4px;">ข้อมูล Update ณ วันที่ 16 พฤศจิกายน 2569</p>
+    <p style="font-size:11px;margin:0 0 12px;">จัดทำโดย: กลุ่มสารสนเทศการเกษตร สำนักงานเกษตรและสหกรณ์จังหวัดลำปาง</p>
+    <p style="font-size:10px;color:rgba(255,255,255,0.5);margin:0;">FROM GAP DATA TO MARKET INTELLIGENCE | FROM PRODUCTION INFORMATION TO STRATEGIC DECISION</p>
+  </div>
+</div>
+
+<!-- Plot Detail Modal -->
+<div id="plotModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:16px;font-weight:700;color:var(--deep-teal);margin:0;">รายละเอียดแปลง</h3>
+      <button onclick="closePlotModal()" style="background:none;border:none;cursor:pointer;font-size:20px;">&times;</button>
+    </div>
+    <div id="plotModalContent"></div>
+  </div>
+</div>
+
+<script>
+// ===== GLOBAL STATE =====
+let rawData = [];
+let filteredData = [];
+let charts = {};
+const MARKET_GROUPS = [
+  { id: 1, name: 'Mass Market & Commodity', nameTH: 'ตลาดปริมาณมากและสินค้าโภคภัณฑ์', color: '#1a7a7a', desc: 'พืชอาหารพื้นฐานและวัตถุดิบตลาดปริมาณมาก เน้นต้นทุน ปริมาณ และความต่อเนื่อง' },
+  { id: 2, name: 'Fresh & Daily Consumption', nameTH: 'ผักสดและบริโภคประจำวัน', color: '#26a69a', desc: 'ผักสดและพืชบริโภคประจำวัน เน้นความสด สะอาด ปลอดภัย' },
+  { id: 3, name: 'Fresh & Seasonal Fruits', nameTH: 'ผลไม้สดและตามฤดูกาล', color: '#66bb6a', desc: 'ผลไม้สดและผลผลิตตามฤดูกาล เน้นรสชาติ คุณภาพ เกรด' },
+  { id: 4, name: 'Premium & Specialty', nameTH: 'สินค้าพรีเมียมและเฉพาะทาง', color: '#ffa726', desc: 'สินค้าสร้างความแตกต่างจากแหล่งผลิต สายพันธุ์ คุณภาพ' },
+  { id: 5, name: 'Agro-Processing & Industrial', nameTH: 'แปรรูปและอุตสาหกรรม', color: '#ef5350', desc: 'พืชวัตถุดิบแปรรูป/อุตสาหกรรม กำหนดสเปกและปริมาณรับซื้อ' },
+  { id: 6, name: 'Functional Food & Herbal', nameTH: 'อาหารฟังก์ชันและสมุนไพร', color: '#ab47bc', desc: 'พืชสมุนไพรและพืชอาหารต่อยอดผลิตภัณฑ์สุขภาพ' }
+];
+
+const STRATEGY_MAP = {
+  'Mass Market & Commodity': 'ส่งเสริมการวางแผนปริมาณการผลิต จัดกลุ่มพื้นที่เพื่อวางแผนการผลิตต่อเนื่อง',
+  'Fresh & Daily Consumption': 'วางแผนกระจายพื้นที่ผลิต พัฒนาความต่อเนื่องของรอบการผลิตให้สอดคล้องกับความต้องการ',
+  'Fresh & Seasonal Fruits': 'จำแนกชนิดผลไม้ตามพื้นที่ ใช้ข้อมูลการรับรองวางแผนช่วงเวลาการผลิต',
+  'Premium & Specialty': 'พัฒนาการจัดกลุ่มสินค้าเฉพาะพื้นที่ สนับสนุนสินค้าเกษตรมูลค่าสูง',
+  'Agro-Processing & Industrial': 'จัดกลุ่มพื้นที่รองรับการรวบรวมผลผลิต สนับสนุนการวางแผนปริมาณวัตถุดิบ',
+  'Functional Food & Herbal': 'จำแนกพื้นที่ผลิตที่มีศักยภาพ สนับสนุนการต่อยอดสินค้าเกษตรเฉพาะทาง'
+};
+
+// ===== ROBUST NUMBER PARSING =====
+function parseNumber(val) {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  let str = String(val).trim();
+  if (str === '' || str === '-' || str.toLowerCase() === 'n/a' || str.toLowerCase() === 'null') return 0;
+  str = str.replace(/,/g, '').replace(/\s/g, '');
+  const thaiDigits = '๐๑๒๓๔๕๖๗๘๙';
+  str = str.replace(/[๐-๙]/g, d => String(thaiDigits.indexOf(d)));
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+// ===== FIELD MAPPING =====
+const FIELD_CANDIDATES = {
+  area: ['พื้นที่ปลูก (ไร่)', 'พื้นที่ปลูก', 'พื้นที่ (ไร่)', 'พื้นที่', 'cultivated_area', 'Area (Rai)', 'Area'],
+  output: ['ปริมาณการผลิต (กิโลกรัม)', 'ปริมาณการผลิต', 'ปริมาณ (กิโลกรัม)', 'ปริมาณ', 'production_volume', 'Production (Kg)', 'Yield'],
+  trees: ['จำนวน (ต้น)', 'จำนวนต้น', 'จำนวน (Trees)', 'Trees', 'จำนวน'],
+  plotCode: ['รหัสแปลง', 'Plot Code', 'PlotCode', 'plot_code'],
+  farmerName: ['ชื่อ - นามสกุล', 'ชื่อ-นามสกุล', 'ชื่อ นามสกุล', 'Farmer Name', 'Name'],
+  cropName: ['ชื่อพืช', 'พืช', 'Crop Name', 'Crop'],
+  marketGroup: ['ชื่อกลุ่มตลาด', 'กลุ่มตลาด', 'Market Group', 'Cluster'],
+  plotType: ['ชนิดของแปลง', 'ชนิดแปลง', 'Plot Type'],
+  status: ['สถานะ', 'Status'],
+  district: ['อำเภอ', 'District', 'Amphoe'],
+  subdistrict: ['ตำบล', 'Subdistrict', 'Tambon'],
+  province: ['จังหวัด', 'Province'],
+  certDate: ['วันได้รับการรับรอง', 'วันที่ได้รับการรับรอง', 'Certification Date', 'วันรับรอง'],
+  expiryDate: ['วันที่สิ้นสุดการรับรอง', 'วันสิ้นสุดการรับรอง', 'วันสิ้นสุด', 'Expiry Date']
+};
+
+function findFieldKey(row, candidates) {
+  const keys = Object.keys(row);
+  for (const c of candidates) {
+    if (keys.includes(c)) return c;
+  }
+  const normalize = s => s.replace(/[\s()（）\[\]]/g, '').toLowerCase();
+  for (const c of candidates) {
+    const cNorm = normalize(c);
+    for (const k of keys) {
+      if (normalize(k) === cNorm) return k;
+    }
+  }
+  for (const c of candidates) {
+    const cLower = c.toLowerCase();
+    for (const k of keys) {
+      if (k.toLowerCase().includes(cLower) || cLower.includes(k.toLowerCase())) return k;
+    }
+  }
+  return null;
+}
+
+let fieldMap = {};
+
+function buildFieldMap(sampleRow) {
+  const map = {};
+  for (const [field, candidates] of Object.entries(FIELD_CANDIDATES)) {
+    map[field] = findFieldKey(sampleRow, candidates);
+  }
+  return map;
+}
+
+function getFieldValue(row, field) {
+  const key = fieldMap[field];
+  if (!key) return '';
+  const val = row[key];
+  return val === null || val === undefined ? '' : String(val).trim();
+}
+
+function getFieldNumber(row, field) {
+  const key = fieldMap[field];
+  if (!key) return 0;
+  return parseNumber(row[key]);
+}
+
+function getCropName(r) { return getFieldValue(r, 'cropName'); }
+function getMarketGroup(r) { return getFieldValue(r, 'marketGroup'); }
+function getPlotCode(r) { return getFieldValue(r, 'plotCode'); }
+function getFarmerName(r) { return getFieldValue(r, 'farmerName'); }
+function getDistrict(r) { return getFieldValue(r, 'district'); }
+function getSubdistrict(r) { return getFieldValue(r, 'subdistrict'); }
+function getStatus(r) { return getFieldValue(r, 'status'); }
+function getPlotType(r) { return getFieldValue(r, 'plotType'); }
+
+// ===== DATE PARSING =====
+function parseThaiDate(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  if (!str) return null;
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    if (d.getFullYear() > 2400) d.setFullYear(d.getFullYear() - 543);
+    return d;
+  }
+  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m) {
+    let [, day, month, year] = m.map(Number);
+    if (year < 100) year += 2500;
+    if (year > 2400) year -= 543;
+    d = new Date(year, month - 1, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const m2 = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (m2) {
+    let [, year, month, day] = m2.map(Number);
+    if (year > 2400) year -= 543;
+    d = new Date(year, month - 1, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+// ===== DATA LOADING =====
+async function loadData() {
+  try {
+    const response = await fetch('https://raw.githubusercontent.com/korsorlampangweb/GAPCrops-Dashboard/main/GAP-FoodCrops-2569-I.csv');
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const csvText = await response.text();
+    const cleanText = csvText.replace(/^\uFEFF/, '');
+    const parsed = Papa.parse(cleanText, { header: true, skipEmptyLines: true, dynamicTyping: false });
+
+    rawData = parsed.data.filter(row => {
+      return Object.values(row).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+    });
+
+    if (rawData.length === 0) throw new Error('ไม่พบข้อมูลในไฟล์ CSV');
+
+    fieldMap = buildFieldMap(rawData[0]);
+
+    rawData.forEach(r => {
+      r._area = getFieldNumber(r, 'area');
+      r._output = getFieldNumber(r, 'output');
+      r._trees = getFieldNumber(r, 'trees');
+      r._certDate = parseThaiDate(getFieldValue(r, 'certDate'));
+      r._expiryDate = parseThaiDate(getFieldValue(r, 'expiryDate'));
+      r._year = r._certDate ? r._certDate.getFullYear() : null;
+    });
+
+    filteredData = [...rawData];
+    populateFilters();
+    renderAll();
+    document.getElementById('loadingOverlay').style.display = 'none';
+  } catch (err) {
+    console.error('Error loading data:', err);
+    document.getElementById('loadingOverlay').innerHTML = `
+      <div style="max-width:600px;text-align:center;">
+        <p style="color:#d32f2f;font-weight:700;font-size:18px;">❌ เกิดข้อผิดพลาดในการโหลดข้อมูล</p>
+        <p style="font-size:13px;color:#666;margin-top:12px;">${err.message}</p>
+      </div>`;
+  }
+}
+
+// ===== FORMATTING HELPERS =====
+function formatNum(n) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  return Math.round(n).toLocaleString('th-TH');
+}
+function formatArea(n) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+function formatOutput(n) {
+  if (n === null || n === undefined || isNaN(n)) return 'N/A';
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function formatPct(n) {
+  if (isNaN(n)) return 'N/A';
+  return n.toFixed(1) + '%';
+}
+
+// ===== FILTERS =====
+function populateFilters() {
+  const groups = [...new Set(rawData.map(getMarketGroup).filter(Boolean))].sort();
+  const crops = [...new Set(rawData.map(getCropName).filter(Boolean))].sort();
+  const districts = [...new Set(rawData.map(getDistrict).filter(Boolean))].sort();
+  const subdistricts = [...new Set(rawData.map(getSubdistrict).filter(Boolean))].sort();
+  const statuses = [...new Set(rawData.map(getStatus).filter(Boolean))].sort();
+  const years = [...new Set(rawData.map(r => r._year).filter(Boolean))].sort();
+
+  fillSelect('filterMarketGroup', groups);
+  fillSelect('filterCrop', crops);
+  fillSelect('filterDistrict', districts);
+  fillSelect('filterSubdistrict', subdistricts);
+  fillSelect('filterStatus', statuses);
+  fillSelect('filterYear', years.map(String));
+
+  fillSelect('searchCrop', crops);
+  fillSelect('searchGroup', groups);
+  fillSelect('searchDistrict', districts);
+  fillSelect('searchStatus', statuses);
+}
+
+function fillSelect(id, items) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const first = sel.options[0].text;
+  sel.innerHTML = `<option value="">${first}</option>`;
+  items.forEach(item => {
+    if (item) sel.innerHTML += `<option value="${String(item).replace(/"/g, '&quot;')}">${item}</option>`;
+  });
+}
+
+function applyFilters() {
+  const mg = document.getElementById('filterMarketGroup').value;
+  const crop = document.getElementById('filterCrop').value;
+  const dist = document.getElementById('filterDistrict').value;
+  const sub = document.getElementById('filterSubdistrict').value;
+  const status = document.getElementById('filterStatus').value;
+  const year = document.getElementById('filterYear').value;
+
+  filteredData = rawData.filter(r => {
+    if (mg && getMarketGroup(r) !== mg) return false;
+    if (crop && getCropName(r) !== crop) return false;
+    if (dist && getDistrict(r) !== dist) return false;
+    if (sub && getSubdistrict(r) !== sub) return false;
+    if (status && getStatus(r) !== status) return false;
+    if (year && String(r._year) !== year) return false;
+    return true;
+  });
+  renderAll();
+}
+
+function resetFilters() {
+  ['filterMarketGroup', 'filterCrop', 'filterDistrict', 'filterSubdistrict', 'filterStatus', 'filterYear'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  filteredData = [...rawData];
+  renderAll();
+}
+
+// ===== MODULE SWITCHING =====
+function switchModule(mod) {
+  document.querySelectorAll('.module-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('module-' + mod).classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.querySelector(`.sidebar-item[data-module="${mod}"]`)?.classList.add('active');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  renderOverview();
+  renderClusters();
+  renderProduction();
+  renderGeographic();
+  renderStrategy();
+  renderInsight();
+  renderCertification();
+}
+
+// ===== DATA AGGREGATION HELPERS =====
+function getCropStats(data) {
+  const map = {};
+  data.forEach(r => {
+    const name = getCropName(r);
+    if (!name) return;
+    if (!map[name]) map[name] = { name, group: getMarketGroup(r), farmers: new Set(), plots: new Set(), area: 0, output: 0 };
+    const f = getFarmerName(r); if (f) map[name].farmers.add(f);
+    const p = getPlotCode(r); if (p) map[name].plots.add(p);
+    map[name].area += r._area || 0;
+    map[name].output += r._output || 0;
+  });
+  return Object.values(map).map(m => ({ ...m, farmers: m.farmers.size, plots: m.plots.size }));
+}
+
+function getDistrictStats(data) {
+  const map = {};
+  data.forEach(r => {
+    const name = getDistrict(r);
+    if (!name) return;
+    if (!map[name]) map[name] = { name, farmers: new Set(), plots: new Set(), crops: new Set(), area: 0, output: 0, groups: {}, cropsMap: {} };
+    const f = getFarmerName(r); if (f) map[name].farmers.add(f);
+    const p = getPlotCode(r); if (p) map[name].plots.add(p);
+    const c = getCropName(r); if (c) map[name].crops.add(c);
+    map[name].area += r._area || 0;
+    map[name].output += r._output || 0;
+    const g = getMarketGroup(r);
+    if (g) map[name].groups[g] = (map[name].groups[g] || 0) + 1;
+    if (c) map[name].cropsMap[c] = (map[name].cropsMap[c] || 0) + 1;
+  });
+  return Object.values(map).map(m => {
+    const topGroup = Object.entries(m.groups).sort((a, b) => b[1] - a[1])[0];
+    const topCrop = Object.entries(m.cropsMap).sort((a, b) => b[1] - a[1])[0];
+    return { ...m, farmers: m.farmers.size, plots: m.plots.size, crops: m.crops.size, topGroup: topGroup ? topGroup[0] : '', topCrop: topCrop ? topCrop[0] : '' };
+  });
+}
+
+// ===== NEW: Subdistrict Stats Aggregation =====
+function getSubdistrictStats(data) {
+  const map = {};
+  data.forEach(r => {
+    const subName = getSubdistrict(r);
+    const distName = getDistrict(r);
+    if (!subName) return;
+    const key = subName + '||' + distName;
+    if (!map[key]) {
+      map[key] = {
+        name: subName,
+        district: distName || '',
+        farmers: new Set(),
+        plots: new Set(),
+        crops: new Set(),
+        area: 0,
+        output: 0,
+        groups: {},
+        cropsMap: {}
+      };
+    }
+    const f = getFarmerName(r); if (f) map[key].farmers.add(f);
+    const p = getPlotCode(r); if (p) map[key].plots.add(p);
+    const c = getCropName(r); if (c) map[key].crops.add(c);
+    map[key].area += r._area || 0;
+    map[key].output += r._output || 0;
+    const g = getMarketGroup(r);
+    if (g) map[key].groups[g] = (map[key].groups[g] || 0) + 1;
+    if (c) map[key].cropsMap[c] = (map[key].cropsMap[c] || 0) + 1;
+  });
+  return Object.values(map).map(m => {
+    const topGroup = Object.entries(m.groups).sort((a, b) => b[1] - a[1])[0];
+    const topCrop = Object.entries(m.cropsMap).sort((a, b) => b[1] - a[1])[0];
+    return {
+      ...m,
+      farmers: m.farmers.size,
+      plots: m.plots.size,
+      crops: m.crops.size,
+      topGroup: topGroup ? topGroup[0] : '',
+      topCrop: topCrop ? topCrop[0] : ''
+    };
+  });
+}
+
+function getGroupStats(data, field) {
+  const map = {};
+  data.forEach(r => {
+    const g = getMarketGroup(r);
+    if (!g) return;
+    if (!map[g]) map[g] = { name: g, value: 0 };
+    map[g].value += r[field] || 0;
+  });
+  return Object.values(map);
+}
+
+function distinctCount(arr, fieldFn) {
+  const set = new Set();
+  arr.forEach(r => { const v = fieldFn(r); if (v) set.add(v); });
+  return set.size;
+}
+
+function sumArea(data) { return data.reduce((s, r) => s + (r._area || 0), 0); }
+function sumOutput(data) { return data.reduce((s, r) => s + (r._output || 0), 0); }
+
+function mgInfo(name) { return MARKET_GROUPS.find(m => m.name === name) || { color: '#999', nameTH: name || 'N/A', desc: '' }; }
+
+// ===== MODULE 0: OVERVIEW =====
+function renderOverview() {
+  const data = filteredData;
+  const totalPlots = distinctCount(data, getPlotCode);
+  const totalFarmers = distinctCount(data, getFarmerName);
+  const totalCrops = distinctCount(data, getCropName);
+  const totalArea = sumArea(data);
+  const totalOutput = sumOutput(data);
+  const totalDistricts = distinctCount(data, getDistrict);
+  const certifiedCount = data.filter(r => getStatus(r).includes('ได้รับการรับรอง')).length;
+  const pendingCount = data.filter(r => !getStatus(r).includes('ได้รับการรับรอง') && getStatus(r) !== '').length;
+
+  document.getElementById('overviewKPIs').innerHTML = [
+    { label: 'จำนวนแปลง GAP', value: formatNum(totalPlots), icon: '📋', bg: '#e0f2f1' },
+    { label: 'จำนวนเกษตรกร', value: formatNum(totalFarmers), icon: '👨‍🌾', bg: '#e8f5e9' },
+    { label: 'จำนวนชนิดพืช', value: formatNum(totalCrops), icon: '🌿', bg: '#f1f8e9' },
+    { label: 'พื้นที่ปลูกรวม (ไร่)', value: formatArea(totalArea), icon: '🗺️', bg: '#e0f7fa' },
+    { label: 'ปริมาณผลผลิตรวม (กก.)', value: formatOutput(totalOutput), icon: '📦', bg: '#fff3e0' },
+    { label: 'จำนวนอำเภอ', value: formatNum(totalDistricts), icon: '📍', bg: '#fce4ec' },
+    { label: 'แปลงรับรองแล้ว', value: formatNum(certifiedCount), icon: '✅', bg: '#e8f5e9' },
+    { label: 'แปลงดำเนินการ', value: formatNum(pendingCount), icon: '⏳', bg: '#fff8e1' }
+  ].map(k => `
+    <div class="kpi-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <div class="kpi-value tabular-nums">${k.value}</div>
+          <div class="kpi-label">${k.label}</div>
+        </div>
+        <div class="kpi-icon" style="background:${k.bg};font-size:22px;">${k.icon}</div>
+      </div>
+    </div>
+  `).join('');
+
+  renderDonut('overviewDonut', getGroupStats(data, '_area'), 'พื้นที่ปลูก (ไร่)');
+
+  const top10 = getCropStats(data).sort((a, b) => b.area - a.area).slice(0, 10);
+  renderHBar('overviewBar', top10.map(c => c.name), top10.map(c => c.area), 'พื้นที่ปลูก (ไร่)');
+
+  const topGroup = getGroupStats(data, '_area').sort((a, b) => b.value - a.value)[0];
+  const topDistrict = getDistrictStats(data).sort((a, b) => b.area - a.area)[0];
+  const topCrop = getCropStats(data).sort((a, b) => b.area - a.area)[0];
+
+  document.getElementById('execInsights').innerHTML = [
+    { title: 'ฐานการผลิตพืชอาหาร GAP', content: `จังหวัดลำปางมีแปลง GAP พืชอาหารจำนวน ${formatNum(totalPlots)}แปลง จากเกษตรกร ${formatNum(totalFarmers)}ราย ครอบคลุม ${formatNum(totalCrops)} ชนิดพืช ในพื้นที่ ${formatArea(totalArea)}ไร่`, color: 'var(--medium-teal)' },
+    { title: 'กลุ่มตลาดที่มีฐานการผลิตสูงสุด', content: topGroup ? `กลุ่ม "${topGroup.name}" มีพื้นที่ปลูกสูงสุด ${formatArea(topGroup.value)}ไร่ คิดเป็น ${totalArea > 0 ? formatPct(topGroup.value / totalArea * 100) : 'N/A'} ของพื้นที่ทั้งหมด` : 'ไม่มีข้อมูล', color: 'var(--accent-orange)' },
+    { title: 'พื้นที่ผลิตสำคัญ', content: topDistrict ? `อำเภอ${topDistrict.name} มีพื้นที่ปลูกสูงสุด ${formatArea(topDistrict.area)}ไร่ จำนวน ${formatNum(topDistrict.plots)}แปลง` : 'ไม่มีข้อมูล', color: '#66bb6a' },
+    { title: 'ชนิดพืชหลัก', content: topCrop ? `${topCrop.name} มีพื้นที่ปลูกสูงสุด ${formatArea(topCrop.area)}ไร่ จาก ${formatNum(topCrop.farmers)} เกษตรกร` : 'ไม่มีข้อมูล', color: '#ab47bc' }
+  ].map(c => `
+    <div class="insight-card" style="border-left-color:${c.color};">
+      <div style="font-size:14px;font-weight:700;color:var(--text-dark);margin-bottom:8px;">${c.title}</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">${c.content}</div>
+    </div>
+  `).join('');
+
+  const distStats = getDistrictStats(data).sort((a, b) => b.area - a.area);
+  renderVBar('overviewDistrictChart', distStats.map(d => d.name), [
+    { label: 'พื้นที่ปลูก (ไร่)', data: distStats.map(d => d.area), color: '#1a7a7a' },
+    { label: 'ปริมาณผลผลิต (กก.)', data: distStats.map(d => d.output), color: '#f57c00' }
+  ]);
+}
+
+// ===== MODULE 1: CLUSTERS =====
+function renderClusters() {
+  const data = filteredData;
+  const groupNames = [...new Set(data.map(getMarketGroup).filter(Boolean))];
+
+  const clusterData = groupNames.map(name => {
+    const gd = data.filter(r => getMarketGroup(r) === name);
+    return {
+      name,
+      crops: distinctCount(gd, getCropName),
+      farmers: distinctCount(gd, getFarmerName),
+      plots: distinctCount(gd, getPlotCode),
+      area: sumArea(gd),
+      output: sumOutput(gd),
+      topCrop: getCropStats(gd).sort((a, b) => b.area - a.area)[0],
+      topDistrict: getDistrictStats(gd).sort((a, b) => b.area - a.area)[0]
+    };
+  });
+
+  const emojis = ['🌾', '🥬', '🍎', '⭐', '🏭', '🌿'];
+  document.getElementById('clusterCards').innerHTML = clusterData.map((c, i) => {
+    const info = mgInfo(c.name);
+    return `
+    <div class="cluster-card" onclick="showClusterDetail('${c.name.replace(/'/g, "\\'")}')" style="border-top:4px solid ${info.color};">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;color:${info.color};font-weight:600;">Cluster ${i + 1}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-dark);">${c.name}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${info.nameTH}</div>
+        </div>
+        <div style="font-size:24px;">${emojis[i] || '📊'}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">${info.desc}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><span style="font-size:18px;font-weight:700;color:${info.color};" class="tabular-nums">${formatNum(c.crops)}</span><br><span style="font-size:10px;color:var(--text-muted);">ชนิดพืช</span></div>
+        <div><span style="font-size:18px;font-weight:700;color:${info.color};" class="tabular-nums">${formatNum(c.farmers)}</span><br><span style="font-size:10px;color:var(--text-muted);">เกษตรกร</span></div>
+        <div><span style="font-size:18px;font-weight:700;color:${info.color};" class="tabular-nums">${formatNum(c.plots)}</span><br><span style="font-size:10px;color:var(--text-muted);">แปลง</span></div>
+        <div><span style="font-size:18px;font-weight:700;color:${info.color};" class="tabular-nums">${formatArea(c.area)}</span><br><span style="font-size:10px;color:var(--text-muted);">พื้นที่ (ไร่)</span></div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+        ผลผลิต: <strong class="tabular-nums">${formatOutput(c.output)} กก.</strong><br>
+        พืชหลัก: <strong>${c.topCrop ? c.topCrop.name : 'N/A'}</strong> | พื้นที่หลัก: <strong>${c.topDistrict ? c.topDistrict.name : 'N/A'}</strong>
+      </div>
+    </div>`;
+  }).join('');
+
+  renderHBar('clusterAreaChart', clusterData.map(c => c.name), clusterData.map(c => c.area), 'พื้นที่ปลูก (ไร่)', MARKET_GROUPS.map(m => m.color));
+  renderHBar('clusterOutputChart', clusterData.map(c => c.name), clusterData.map(c => c.output), 'ปริมาณผลผลิต (กก.)', MARKET_GROUPS.map(m => m.color));
+  renderTreemap('treemapContainer', data);
+}
+
+function showClusterDetail(groupName) {
+  document.getElementById('clusterOverview').style.display = 'none';
+  document.getElementById('clusterDetail').style.display = 'block';
+  document.getElementById('clusterDetailTitle').textContent = groupName;
+
+  const data = filteredData.filter(r => getMarketGroup(r) === groupName);
+  const info = mgInfo(groupName);
+
+  document.getElementById('clusterKPIs').innerHTML = [
+    { label: 'ชนิดพืช', value: formatNum(distinctCount(data, getCropName)) },
+    { label: 'เกษตรกร', value: formatNum(distinctCount(data, getFarmerName)) },
+    { label: 'แปลง', value: formatNum(distinctCount(data, getPlotCode)) },
+    { label: 'พื้นที่ (ไร่)', value: formatArea(sumArea(data)) },
+    { label: 'ผลผลิต (กก.)', value: formatOutput(sumOutput(data)) }
+  ].map(k => `<div class="kpi-card"><div class="kpi-value tabular-nums" style="font-size:22px;">${k.value}</div><div class="kpi-label">${k.label}</div></div>`).join('');
+
+  const cropStats = getCropStats(data).sort((a, b) => b.area - a.area);
+  renderHBar('clusterCropChart', cropStats.slice(0, 10).map(c => c.name), cropStats.slice(0, 10).map(c => c.area), 'พื้นที่ปลูก (ไร่)');
+
+  const distStats = getDistrictStats(data).sort((a, b) => b.area - a.area);
+  renderVBar('clusterDistrictChart', distStats.map(d => d.name), [{ label: 'พื้นที่ (ไร่)', data: distStats.map(d => d.area), color: info.color }]);
+
+  const tbody = document.querySelector('#clusterCropTable tbody');
+  tbody.innerHTML = cropStats.map((c, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><strong>${c.name}</strong></td>
+      <td class="tabular-nums">${formatNum(c.farmers)}</td>
+      <td class="tabular-nums">${formatNum(c.plots)}</td>
+      <td class="tabular-nums">${formatArea(c.area)}</td>
+      <td class="tabular-nums">${formatOutput(c.output)}</td>
+    </tr>
+  `).join('');
+}
+
+function hideClusterDetail() {
+  document.getElementById('clusterDetail').style.display = 'none';
+  document.getElementById('clusterOverview').style.display = 'block';
+}
+
+// ===== MODULE 2: PRODUCTION =====
+function renderProduction() {
+  const data = filteredData;
+  const totalPlots = distinctCount(data, getPlotCode);
+  const totalFarmers = distinctCount(data, getFarmerName);
+  const totalCrops = distinctCount(data, getCropName);
+  const totalArea = sumArea(data);
+  const totalOutput = sumOutput(data);
+  const totalDistricts = distinctCount(data, getDistrict);
+  const totalSubdistricts = distinctCount(data, getSubdistrict);
+  const certifiedCount = data.filter(r => getStatus(r).includes('ได้รับการรับรอง')).length;
+
+  document.getElementById('productionKPIs').innerHTML = [
+    { label: 'แปลง GAP', value: formatNum(totalPlots), icon: '📋', bg: '#e0f2f1' },
+    { label: 'เกษตรกร', value: formatNum(totalFarmers), icon: '👨‍🌾', bg: '#e8f5e9' },
+    { label: 'ชนิดพืช', value: formatNum(totalCrops), icon: '🌿', bg: '#f1f8e9' },
+    { label: 'พื้นที่ (ไร่)', value: formatArea(totalArea), icon: '🗺️', bg: '#e0f7fa' },
+    { label: 'ผลผลิต (กก.)', value: formatOutput(totalOutput), icon: '📦', bg: '#fff3e0' },
+    { label: 'อำเภอ', value: formatNum(totalDistricts), icon: '📍', bg: '#fce4ec' },
+    { label: 'ตำบล', value: formatNum(totalSubdistricts), icon: '🏘️', bg: '#e8eaf6' },
+    { label: 'แปลงรับรอง', value: formatNum(certifiedCount), icon: '✅', bg: '#e8f5e9' }
+  ].map(k => `
+    <div class="kpi-card">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <div class="kpi-value tabular-nums" style="font-size:22px;">${k.value}</div>
+          <div class="kpi-label">${k.label}</div>
+        </div>
+        <div class="kpi-icon" style="background:${k.bg};font-size:20px;">${k.icon}</div>
+      </div>
+    </div>
+  `).join('');
+
+  updateTop10();
+  renderDonut('prodDonut', getGroupStats(data, '_area'), 'พื้นที่ปลูก (ไร่)');
+  renderDonut('prodOutputDonut', getGroupStats(data, '_output'), 'ปริมาณผลผลิต (กก.)');
+}
+
+function updateTop10() {
+  const data = filteredData;
+  const criteria = document.getElementById('top10Criteria').value;
+  const cropStats = getCropStats(data);
+
+  let sorted, valueKey;
+  switch (criteria) {
+    case 'farmers': sorted = cropStats.sort((a, b) => b.farmers - a.farmers); valueKey = 'farmers'; break;
+    case 'plots': sorted = cropStats.sort((a, b) => b.plots - a.plots); valueKey = 'plots'; break;
+    case 'area': sorted = cropStats.sort((a, b) => b.area - a.area); valueKey = 'area'; break;
+    case 'output': sorted = cropStats.sort((a, b) => b.output - a.output); valueKey = 'output'; break;
+  }
+
+  const top10 = sorted.slice(0, 10);
+  const unitLabel = valueKey === 'area' ? 'พื้นที่ (ไร่)' : valueKey === 'output' ? 'ผลผลิต (กก.)' : valueKey === 'farmers' ? 'เกษตรกร (ราย)' : 'แปลง (แปลง)';
+
+  renderHBar('top10Chart', top10.map(c => c.name), top10.map(c => c[valueKey]), unitLabel);
+
+  const tbody = document.querySelector('#top10Table tbody');
+  tbody.innerHTML = top10.map((c, i) => `
+    <tr>
+      <td><strong>${i + 1}</strong></td>
+      <td><strong>${c.name}</strong></td>
+      <td><span class="badge" style="background:${mgInfo(c.group).color}20;color:${mgInfo(c.group).color};">${(c.group || 'N/A').substring(0, 20)}</span></td>
+      <td class="tabular-nums">${formatNum(c.farmers)}</td>
+      <td class="tabular-nums">${formatNum(c.plots)}</td>
+      <td class="tabular-nums">${formatArea(c.area)}</td>
+      <td class="tabular-nums">${formatOutput(c.output)}</td>
+    </tr>
+  `).join('');
+}
+
+// ===== MODULE 3: GEOGRAPHIC =====
+function renderGeographic() {
+  const data = filteredData;
+  const distStats = getDistrictStats(data).sort((a, b) => b.area - a.area);
+  const maxArea = Math.max(...distStats.map(d => d.area), 1);
+
+  // แผนที่ความเข้มข้น
+  document.getElementById('geoMap').innerHTML = distStats.map(d => {
+    const intensity = d.area / maxArea;
+    return `
+    <div style="background:rgba(26,122,122,${0.2 + intensity * 0.8});border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+      <div style="font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${d.name}</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin:4px 0;" class="tabular-nums">${formatArea(d.area)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.9);">ไร่ | ${formatNum(d.plots)} แปลง</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.9);">${formatNum(d.farmers)} เกษตรกร</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.9);">${formatOutput(d.output)} กก.</div>
+    </div>`;
+  }).join('');
+
+  // ตารางเปรียบเทียบ 13 อำเภอ
+  const distTbody = document.querySelector('#districtTable tbody');
+  distTbody.innerHTML = distStats.map(d => `
+    <tr>
+      <td><strong>${d.name}</strong></td>
+      <td class="tabular-nums">${formatNum(d.farmers)}</td>
+      <td class="tabular-nums">${formatNum(d.plots)}</td>
+      <td class="tabular-nums">${formatNum(d.crops)}</td>
+      <td class="tabular-nums">${formatArea(d.area)}</td>
+      <td class="tabular-nums">${formatOutput(d.output)}</td>
+      <td><span class="badge" style="background:${mgInfo(d.topGroup).color}20;color:${mgInfo(d.topGroup).color};">${(d.topGroup || 'N/A').substring(0, 20)}</span></td>
+      <td>${d.topCrop || 'N/A'}</td>
+    </tr>
+  `).join('');
+
+  // ===== NEW: Top 15 ตำบล =====
+  renderTopSubdistricts(data);
+
+  // กราฟ 1: พื้นที่ปลูกรายอำเภอ
+  renderDistrictAreaChart('geoAreaChart', distStats);
+
+  // กราฟ 2: ปริมาณผลผลิตรายอำเภอ
+  renderDistrictOutputChart('geoOutputChart', distStats);
+}
+
+// ===== NEW: Render Top 15 Subdistricts =====
+function renderTopSubdistricts(data) {
+  const subStats = getSubdistrictStats(data)
+    .filter(s => s.name && s.name !== '')
+    .sort((a, b) => b.area - a.area)
+    .slice(0, 15);
+
+  const totalArea = subStats.reduce((s, d) => s + d.area, 0);
+  const tbody = document.querySelector('#topSubdistrictTable tbody');
+
+  if (subStats.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px;">ไม่มีข้อมูลตำบล</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = subStats.map((d, i) => {
+    const rank = i + 1;
+    let rankClass = 'rank-default';
+    if (rank === 1) rankClass = 'rank-1';
+    else if (rank === 2) rankClass = 'rank-2';
+    else if (rank === 3) rankClass = 'rank-3';
+
+    const groupInfo = mgInfo(d.topGroup);
+    const pct = totalArea > 0 ? (d.area / totalArea * 100).toFixed(1) : '0.0';
+
+    return `
+    <tr>
+      <td style="text-align:center;">
+        <span class="rank-badge ${rankClass}">${rank}</span>
+      </td>
+      <td><strong style="color:var(--deep-teal);">${d.name}</strong></td>
+      <td style="color:var(--text-muted);font-size:12px;">${d.district || 'N/A'}</td>
+      <td class="tabular-nums" style="text-align:right;">${formatNum(d.farmers)}</td>
+      <td class="tabular-nums" style="text-align:right;">${formatNum(d.plots)}</td>
+      <td class="tabular-nums" style="text-align:right;">${formatNum(d.crops)}</td>
+      <td class="tabular-nums" style="text-align:right;font-weight:600;color:var(--medium-teal);">${formatArea(d.area)}<span style="font-size:10px;color:var(--text-muted);font-weight:400;margin-left:4px;">(${pct}%)</span></td>
+      <td class="tabular-nums" style="text-align:right;font-weight:600;color:var(--accent-orange);">${formatOutput(d.output)}</td>
+      <td><span class="badge" style="background:${groupInfo.color}20;color:${groupInfo.color};">${(d.topGroup || 'N/A').substring(0, 20)}</span></td>
+      <td>${d.topCrop || 'N/A'}</td>
+    </tr>
+    `;
+  }).join('');
+
+  // เพิ่มแถวสรุปผลรวม
+  const totalFarmers = subStats.reduce((s, d) => s + d.farmers, 0);
+  const totalPlots = subStats.reduce((s, d) => s + d.plots, 0);
+  const totalCrops = subStats.reduce((s, d) => s + d.crops, 0);
+  const totalOutput = subStats.reduce((s, d) => s + d.output, 0);
+
+  tbody.innerHTML += `
+    <tr style="background:var(--light-teal);font-weight:700;">
+      <td colspan="2" style="text-align:right;color:var(--deep-teal);">รวม Top 15 ตำบล (${subStats.length} ตำบล)</td>
+      <td></td>
+      <td class="tabular-nums" style="text-align:right;color:var(--deep-teal);">${formatNum(totalFarmers)}</td>
+      <td class="tabular-nums" style="text-align:right;color:var(--deep-teal);">${formatNum(totalPlots)}</td>
+      <td class="tabular-nums" style="text-align:right;color:var(--deep-teal);">${formatNum(totalCrops)}</td>
+      <td class="tabular-nums" style="text-align:right;color:var(--medium-teal);">${formatArea(totalArea)}</td>
+      <td class="tabular-nums" style="text-align:right;color:var(--accent-orange);">${formatOutput(totalOutput)}</td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
+
+// กราฟแท่งพื้นที่ปลูกรายอำเภอ
+function renderDistrictAreaChart(canvasId, distStats) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const labels = distStats.map(d => d.name);
+  const values = distStats.map(d => d.area);
+  const totalArea = values.reduce((s, v) => s + v, 0);
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'พื้นที่ปลูก (ไร่)',
+        data: values,
+        backgroundColor: 'rgba(26, 122, 122, 0.85)',
+        borderColor: '#0d4f4f',
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { duration: 600 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(13, 79, 79, 0.95)',
+          padding: 12,
+          titleFont: { size: 13, family: 'Noto Sans Thai', weight: 'bold' },
+          bodyFont: { size: 12, family: 'Noto Sans Thai' },
+          callbacks: {
+            title: (ctx) => `อำเภอ${ctx[0].label}`,
+            label: (ctx) => {
+              const val = ctx.raw;
+              const pct = totalArea > 0 ? ((val / totalArea) * 100).toFixed(1) : '0.0';
+              return [
+                `พื้นที่ปลูก: ${val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ไร่`,
+                `สัดส่วน: ${pct}%`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 11, family: 'Noto Sans Thai', weight: '600' }, maxRotation: 45, minRotation: 0 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'พื้นที่ปลูก (ไร่)', font: { size: 12, family: 'Noto Sans Thai', weight: '600' }, color: '#0d4f4f' },
+          ticks: { font: { size: 10 }, callback: v => Math.round(v).toLocaleString('th-TH') },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'barValueLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx: c, data } = chart;
+        const meta = chart.getDatasetMeta(0);
+        c.save();
+        c.font = { size: 10, family: 'Noto Sans Thai', weight: '600' };
+        c.fillStyle = '#0d4f4f';
+        c.textAlign = 'center';
+        c.textBaseline = 'bottom';
+        meta.data.forEach((bar, i) => {
+          const val = data.datasets[0].data[i];
+          if (val > 0) {
+            c.fillText(Math.round(val).toLocaleString('th-TH'), bar.x, bar.y - 4);
+          }
+        });
+        c.restore();
+      }
+    }]
+  });
+}
+
+// กราฟแท่งปริมาณผลผลิตรายอำเภอ
+function renderDistrictOutputChart(canvasId, distStats) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  const labels = distStats.map(d => d.name);
+  const values = distStats.map(d => d.output);
+  const totalOutput = values.reduce((s, v) => s + v, 0);
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'ปริมาณผลผลิต (กก.)',
+        data: values,
+        backgroundColor: 'rgba(245, 124, 0, 0.85)',
+        borderColor: '#e65100',
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { duration: 600 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(230, 81, 0, 0.95)',
+          padding: 12,
+          titleFont: { size: 13, family: 'Noto Sans Thai', weight: 'bold' },
+          bodyFont: { size: 12, family: 'Noto Sans Thai' },
+          callbacks: {
+            title: (ctx) => `อำเภอ${ctx[0].label}`,
+            label: (ctx) => {
+              const val = ctx.raw;
+              const pct = totalOutput > 0 ? ((val / totalOutput) * 100).toFixed(1) : '0.0';
+              return [
+                `ปริมาณผลผลิต: ${val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} กก.`,
+                `สัดส่วน: ${pct}%`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 11, family: 'Noto Sans Thai', weight: '600' }, maxRotation: 45, minRotation: 0 },
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'ปริมาณผลผลิต (กิโลกรัม)', font: { size: 12, family: 'Noto Sans Thai', weight: '600' }, color: '#e65100' },
+          ticks: { font: { size: 10 }, callback: v => Math.round(v).toLocaleString('th-TH') },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'barValueLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx: c, data } = chart;
+        const meta = chart.getDatasetMeta(0);
+        c.save();
+        c.font = { size: 10, family: 'Noto Sans Thai', weight: '600' };
+        c.fillStyle = '#e65100';
+        c.textAlign = 'center';
+        c.textBaseline = 'bottom';
+        meta.data.forEach((bar, i) => {
+          const val = data.datasets[0].data[i];
+          if (val > 0) {
+            c.fillText(Math.round(val).toLocaleString('th-TH'), bar.x, bar.y - 4);
+          }
+        });
+        c.restore();
+      }
+    }]
+  });
+}
+
+// ===== MODULE 4: STRATEGY =====
+function renderStrategy() {
+  const data = filteredData;
+  const groupNames = [...new Set(data.map(getMarketGroup).filter(Boolean))];
+
+  const matrixData = groupNames.map(name => {
+    const gd = data.filter(r => getMarketGroup(r) === name);
+    const topDist = getDistrictStats(gd).sort((a, b) => b.area - a.area)[0];
+    return {
+      name,
+      crops: distinctCount(gd, getCropName),
+      farmers: distinctCount(gd, getFarmerName),
+      plots: distinctCount(gd, getPlotCode),
+      area: sumArea(gd),
+      output: sumOutput(gd),
+      topDistrict: topDist ? topDist.name : 'N/A',
+      strategy: STRATEGY_MAP[name] || 'วิเคราะห์เพิ่มเติม'
+    };
+  });
+
+  const tbody = document.querySelector('#strategyMatrix tbody');
+  tbody.innerHTML = matrixData.map(m => `
+    <tr>
+      <td><strong style="color:${mgInfo(m.name).color};">${m.name}</strong></td>
+      <td class="tabular-nums">${formatNum(m.crops)}</td>
+      <td class="tabular-nums">${formatNum(m.farmers)}</td>
+      <td class="tabular-nums">${formatNum(m.plots)}</td>
+      <td class="tabular-nums">${formatArea(m.area)}</td>
+      <td class="tabular-nums">${formatOutput(m.output)}</td>
+      <td>${m.topDistrict}</td>
+      <td style="font-size:12px;max-width:250px;">${m.strategy}</td>
+    </tr>
+  `).join('');
+
+  const emojis = ['🌾', '🥬', '🍎', '⭐', '🏭', '🌿'];
+  document.getElementById('strategyCards').innerHTML = matrixData.map((m, i) => `
+    <div class="chart-card" style="border-left:4px solid ${mgInfo(m.name).color};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:24px;">${emojis[i] || '📊'}</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-dark);">${m.name}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${mgInfo(m.name).nameTH}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.8;">
+        <div>📊 ชนิดพืช: <strong>${formatNum(m.crops)}</strong> ชนิด</div>
+        <div>👨‍🌾 เกษตรกร: <strong>${formatNum(m.farmers)}</strong> ราย</div>
+        <div>📋 แปลง: <strong>${formatNum(m.plots)}</strong> แปลง</div>
+        <div>🗺️ พื้นที่: <strong>${formatArea(m.area)}</strong> ไร่</div>
+        <div>📦 ผลผลิต: <strong>${formatOutput(m.output)}</strong> กก.</div>
+        <div>📍 พื้นที่หลัก: <strong>${m.topDistrict}</strong></div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--light-teal);border-radius:8px;font-size:12px;color:var(--deep-teal);line-height:1.6;">
+        <strong>แนวทางกลยุทธ์:</strong> ${m.strategy}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== MODULE 5: INSIGHT =====
+function renderInsight() {
+  const data = filteredData;
+  const cropStats = getCropStats(data).sort((a, b) => b.area - a.area).slice(0, 20);
+  const totalArea = sumArea(data);
+
+  document.getElementById('insightTreemap').innerHTML = cropStats.map(c => {
+    const pct = totalArea > 0 ? (c.area / totalArea * 100) : 0;
+    const size = Math.max(40, Math.min(150, pct * 3));
+    const info = mgInfo(c.group);
+    return `<div style="width:${size}px;height:${size}px;background:${info.color};border-radius:6px;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;cursor:pointer;" title="${c.name}: ${formatArea(c.area)} ไร่ (${formatPct(pct)})">
+      <span style="color:#fff;font-size:${size > 80 ? 11 : 9}px;font-weight:600;line-height:1.2;">${c.name}<br>${formatPct(pct)}</span>
+    </div>`;
+  }).join('');
+
+  const groupNames = [...new Set(data.map(getMarketGroup).filter(Boolean))];
+  const yieldData = groupNames.map(name => {
+    const gd = data.filter(r => getMarketGroup(r) === name);
+    const tA = sumArea(gd);
+    const tO = sumOutput(gd);
+    return { name: name.substring(0, 25), yield: tA > 0 ? tO / tA : 0 };
+  }).filter(d => d.yield > 0);
+
+  renderHBar('yieldChart', yieldData.map(d => d.name), yieldData.map(d => d.yield), 'กก./ไร่', MARKET_GROUPS.map(m => m.color));
+
+  const monthlyData = {};
+  data.forEach(r => {
+    if (r._certDate) {
+      const key = r._certDate.getFullYear() + '-' + String(r._certDate.getMonth() + 1).padStart(2, '0');
+      monthlyData[key] = (monthlyData[key] || 0) + 1;
+    }
+  });
+  const months = Object.keys(monthlyData).sort();
+  renderLine('certTrendChart', months, months.map(m => monthlyData[m]), 'จำนวนแปลง');
+
+  const topCrop = getCropStats(data).sort((a, b) => b.area - a.area)[0];
+  const topDist = getDistrictStats(data).sort((a, b) => b.area - a.area)[0];
+  const topGroup = getGroupStats(data, '_area').sort((a, b) => b.value - a.value)[0];
+
+  document.getElementById('insightCards').innerHTML = [
+    { q: 'เกิดอะไรขึ้น', a: `มีแปลง GAP พืชอาหารจำนวน ${formatNum(distinctCount(data, getPlotCode))}แปลง ครอบคลุม ${formatNum(distinctCount(data, getCropName))} ชนิดพืช` },
+    { q: 'เกิดขึ้นที่ไหน', a: topDist ? `อำเภอ${topDist.name} มีฐานการผลิตสูงสุด ${formatArea(topDist.area)}ไร่` : 'ไม่มีข้อมูล' },
+    { q: 'พืชชนิดใดสำคัญ', a: topCrop ? `${topCrop.name} มีพื้นที่ปลูกสูงสุด ${formatArea(topCrop.area)}ไร่` : 'ไม่มีข้อมูล' },
+    { q: 'กลุ่มตลาดใดเด่น', a: topGroup ? `กลุ่ม "${topGroup.name}" มีสัดส่วนพื้นที่สูงสุด` : 'ไม่มีข้อมูล' },
+    { q: 'ควรดำเนินการอย่างไร', a: 'ส่งเสริมการผลิตตามกลุ่มตลาด เชื่อมโยงพื้นที่ผลิตกับความต้องการตลาด' }
+  ].map(c => `
+    <div class="insight-card">
+      <div style="font-size:11px;color:var(--accent-orange);font-weight:700;margin-bottom:4px;">${c.q}</div>
+      <div style="font-size:13px;color:var(--text-dark);line-height:1.6;">${c.a}</div>
+    </div>
+  `).join('');
+
+  const effTbody = document.querySelector('#efficiencyTable tbody');
+  effTbody.innerHTML = groupNames.map(name => {
+    const gd = data.filter(r => getMarketGroup(r) === name);
+    const tA = sumArea(gd);
+    const tO = sumOutput(gd);
+    const plots = distinctCount(gd, getPlotCode);
+    const crops = distinctCount(gd, getCropName);
+    return `
+    <tr>
+      <td><strong style="color:${mgInfo(name).color};">${name}</strong></td>
+      <td class="tabular-nums">${plots > 0 ? formatArea(tA / plots) : 'N/A'}</td>
+      <td class="tabular-nums">${plots > 0 ? formatOutput(tO / plots) : 'N/A'}</td>
+      <td class="tabular-nums">${tA > 0 ? formatOutput(tO / tA) : 'N/A'}</td>
+      <td class="tabular-nums">${crops > 0 ? (plots / crops).toFixed(1) : 'N/A'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== MODULE 6: CERTIFICATION =====
+function renderCertification() {
+  const data = filteredData;
+  const now = new Date();
+  const totalPlots = distinctCount(data, getPlotCode);
+
+  const statuses = {};
+  data.forEach(r => {
+    const s = getStatus(r);
+    if (s) statuses[s] = (statuses[s] || 0) + 1;
+  });
+
+  const certified = data.filter(r => getStatus(r).includes('ได้รับการรับรอง'));
+  const inProgress = data.filter(r => !getStatus(r).includes('ได้รับการรับรอง') && getStatus(r) !== '');
+
+  const expiryCategories = { expired: 0, d30: 0, d60: 0, d90: 0, over90: 0, noDate: 0 };
+  data.forEach(r => {
+    const endDate = r._expiryDate;
+    if (!endDate) { expiryCategories.noDate++; return; }
+    const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) expiryCategories.expired++;
+    else if (daysLeft <= 30) expiryCategories.d30++;
+    else if (daysLeft <= 60) expiryCategories.d60++;
+    else if (daysLeft <= 90) expiryCategories.d90++;
+    else expiryCategories.over90++;
+  });
+
+  document.getElementById('certKPIs').innerHTML = [
+    { label: 'แปลงทั้งหมด', value: formatNum(totalPlots), bg: '#e0f2f1' },
+    { label: 'ได้รับการรับรอง', value: formatNum(certified.length), bg: '#e8f5e9' },
+    { label: 'ระหว่างดำเนินการ', value: formatNum(inProgress.length), bg: '#fff3e0' },
+    { label: 'สถานะรับรอง', value: formatNum(Object.keys(statuses).length) + ' สถานะ', bg: '#e8eaf6' }
+  ].map(k => `<div class="kpi-card"><div class="kpi-value tabular-nums" style="font-size:22px;">${k.value}</div><div class="kpi-label">${k.label}</div></div>`).join('');
+
+  document.getElementById('expiryAlerts').innerHTML = [
+    { label: 'หมดอายุแล้ว', value: expiryCategories.expired, color: '#d32f2f' },
+    { label: 'เหลือ ≤ 30 วัน', value: expiryCategories.d30, color: '#f57c00' },
+    { label: 'เหลือ 31-60 วัน', value: expiryCategories.d60, color: '#ffa726' },
+    { label: 'เหลือ 61-90 วัน', value: expiryCategories.d90, color: '#66bb6a' },
+    { label: 'มากกว่า 90 วัน', value: expiryCategories.over90, color: '#1a7a7a' },
+    { label: 'ไม่มีข้อมูลวันสิ้นสุด', value: expiryCategories.noDate, color: '#9e9e9e' }
+  ].map(a => `
+    <div style="text-align:center;padding:12px;background:${a.color}10;border-radius:8px;border:1px solid ${a.color}30;">
+      <div style="font-size:22px;font-weight:700;color:${a.color};" class="tabular-nums">${formatNum(a.value)}</div>
+      <div style="font-size:11px;color:var(--text-muted);">${a.label}</div>
+    </div>
+  `).join('');
+
+  const yearData = {};
+  data.forEach(r => {
+    if (r._year) yearData[r._year] = (yearData[r._year] || 0) + 1;
+  });
+  const years = Object.keys(yearData).sort();
+  renderVBar('certYearChart', years, [{ label: 'จำนวนแปลง', data: years.map(y => yearData[y]), color: '#1a7a7a' }]);
+
+  const statusLabels = Object.keys(statuses);
+  const statusValues = Object.values(statuses);
+  renderDonut('certStatusChart', statusLabels.map((l, i) => ({ name: l.substring(0, 30), value: statusValues[i] })), 'สถานะ');
+}
+
+// ===== SEARCH =====
+function searchPlots() {
+  const code = document.getElementById('searchName').value.trim();
+  const crop = document.getElementById('searchCrop').value;
+  const group = document.getElementById('searchGroup').value;
+  const dist = document.getElementById('searchDistrict').value;
+  const status = document.getElementById('searchStatus').value;
+
+  let results = rawData.filter(r => {
+    if (code && !getPlotCode(r).includes(code) && !getCropName(r).includes(code)) return false;
+    if (crop && getCropName(r) !== crop) return false;
+    if (group && getMarketGroup(r) !== group) return false;
+    if (dist && getDistrict(r) !== dist) return false;
+    if (status && getStatus(r) !== status) return false;
+    return true;
+  });
+
+  const tbody = document.querySelector('#searchResults tbody');
+  if (results.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = results.slice(0, 100).map(r => `
+    <tr>
+      <td><strong>${getPlotCode(r) || 'N/A'}</strong></td>
+      <td>${getCropName(r) || 'N/A'}</td>
+      <td><span class="badge" style="background:${mgInfo(getMarketGroup(r)).color}20;color:${mgInfo(getMarketGroup(r)).color};">${(getMarketGroup(r) || 'N/A').substring(0, 20)}</span></td>
+      <td>${getDistrict(r) || 'N/A'}</td>
+      <td>${getSubdistrict(r) || 'N/A'}</td>
+      <td class="tabular-nums">${formatArea(r._area)}</td>
+      <td class="tabular-nums">${formatOutput(r._output)}</td>
+      <td><span class="status-badge ${getStatus(r).includes('ได้รับการรับรอง') ? 'status-certified' : 'status-pending'}">${(getStatus(r) || 'N/A').substring(0, 25)}</span></td>
+      <td><button class="btn-outline" style="font-size:11px;padding:4px 8px;" onclick="showPlotDetail('${(getPlotCode(r) || '').replace(/'/g, "\\'")}')">ดู</button></td>
+    </tr>
+  `).join('');
+
+  if (results.length > 100) {
+    tbody.innerHTML += `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:12px;">แสดง 100 จาก ${results.length} รายการ</td></tr>`;
+  }
+}
+
+function showPlotDetail(plotCode) {
+  const plots = rawData.filter(r => getPlotCode(r) === plotCode);
+  if (plots.length === 0) return;
+  const r = plots[0];
+
+  document.getElementById('plotModal').style.display = 'flex';
+  document.getElementById('plotModalContent').innerHTML = `
+    <div style="display:grid;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><span style="font-size:11px;color:var(--text-muted);">รหัสแปลง</span><br><strong>${getPlotCode(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">ชนิดพืช</span><br><strong>${getCropName(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">กลุ่มตลาด</span><br><strong>${getMarketGroup(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">สถานะ</span><br><strong>${getStatus(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">อำเภอ</span><br><strong>${getDistrict(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">ตำบล</span><br><strong>${getSubdistrict(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">พื้นที่ปลูก</span><br><strong>${formatArea(r._area)} ไร่</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">ปริมาณผลผลิต</span><br><strong>${formatOutput(r._output)} กก.</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">วันรับรอง</span><br><strong>${getFieldValue(r, 'certDate') || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">วันสิ้นสุด</span><br><strong>${getFieldValue(r, 'expiryDate') || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">ชนิดแปลง</span><br><strong>${getPlotType(r) || 'N/A'}</strong></div>
+        <div><span style="font-size:11px;color:var(--text-muted);">จำนวนต้น</span><br><strong>${formatNum(r._trees)} ต้น</strong></div>
+      </div>
+      <div style="padding:12px;background:#fff3e0;border-radius:8px;font-size:11px;color:#856404;">
+        ⚠️ ข้อมูลส่วนบุคคล (ชื่อ-นามสกุล, เบอร์โทร, อีเมล, ที่อยู่) ถูกปกปิดตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)
+      </div>
+    </div>
+  `;
+}
+
+function closePlotModal() {
+  document.getElementById('plotModal').style.display = 'none';
+}
+
+// ============================================================
+// CHART RENDERING
+// ============================================================
+function destroyChart(id) {
+  if (charts[id]) { try { charts[id].destroy(); } catch(e){} delete charts[id]; }
+}
+
+function renderDonut(canvasId, data, label) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const colors = data.map((d, i) => {
+    const mg = MARKET_GROUPS.find(m => m.name === d.name);
+    return mg ? mg.color : `hsl(${i * 60}, 60%, 50%)`;
+  });
+  const total = data.reduce((s, d) => s + (d.value || 0), 0);
+  charts[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.name.length > 25 ? d.name.substring(0, 25) + '...' : d.name),
+      datasets: [{ data: data.map(d => d.value), backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11, family: 'Noto Sans Thai' }, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const val = ctx.raw;
+              const pct = total > 0 ? ((val / total) * 100).toFixed(1) : '0.0';
+              return `${ctx.label}: ${pct}%`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderHBar(canvasId, labels, values, unitLabel, colors) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const bgColors = colors || labels.map((_, i) => `hsl(${170 + i * 10}, 60%, ${40 + i * 3}%)`);
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => l.length > 25 ? l.substring(0, 25) + '...' : l),
+      datasets: [{ label: unitLabel, data: values, backgroundColor: bgColors.slice(0, labels.length), borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const val = typeof ctx.raw === 'number' ? Math.round(ctx.raw) : ctx.raw;
+              return `${val.toLocaleString('th-TH')}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 10 }, callback: v => Math.round(v).toLocaleString('th-TH') },
+          grid: { color: '#f0f0f0' }
+        },
+        y: { ticks: { font: { size: 11, family: 'Noto Sans Thai' } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderVBar(canvasId, labels, datasets) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => l.length > 15 ? l.substring(0, 15) + '...' : l),
+      datasets: datasets.map(ds => ({
+        label: ds.label,
+        data: ds.data,
+        backgroundColor: ds.color + 'cc',
+        borderColor: ds.color,
+        borderWidth: 1,
+        borderRadius: 4
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11, family: 'Noto Sans Thai' } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const val = typeof ctx.raw === 'number' ? Math.round(ctx.raw) : ctx.raw;
+              return `${ctx.dataset.label}: ${val.toLocaleString('th-TH')}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10, family: 'Noto Sans Thai' }, maxRotation: 45 }, grid: { display: false } },
+        y: {
+          ticks: { font: { size: 10 }, callback: v => Math.round(v).toLocaleString('th-TH') },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    }
+  });
+}
+
+function renderLine(canvasId, labels, values, unitLabel) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: unitLabel,
+        data: values,
+        borderColor: '#1a7a7a',
+        backgroundColor: 'rgba(26,122,122,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: '#1a7a7a'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const val = typeof ctx.raw === 'number' ? Math.round(ctx.raw) : ctx.raw;
+              return `${val.toLocaleString('th-TH')}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+        y: {
+          ticks: { font: { size: 10 }, callback: v => Math.round(v).toLocaleString('th-TH') },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    }
+  });
+}
+
+function renderTreemap(containerId, data) {
+  const cropStats = getCropStats(data).sort((a, b) => b.area - a.area).slice(0, 30);
+  const totalArea = sumArea(data);
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(80px, 1fr))';
+  container.innerHTML = cropStats.map(c => {
+    const pct = totalArea > 0 ? (c.area / totalArea * 100) : 0;
+    const info = mgInfo(c.group);
+    const size = Math.max(60, Math.min(140, pct * 4));
+    return `<div style="background:${info.color};border-radius:6px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:${size}px;cursor:pointer;transition:opacity 0.2s;" title="${c.name} (${info.name}): ${formatArea(c.area)} ไร่" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+      <span style="color:#fff;font-size:10px;font-weight:600;text-align:center;line-height:1.3;">${c.name}</span>
+      <span style="color:rgba(255,255,255,0.8);font-size:9px;margin-top:2px;">${formatPct(pct)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ===== EXPORT =====
+function exportData() {
+  const data = filteredData;
+  const csvData = data.map(r => {
+    const row = {};
+    row['รหัสแปลง'] = getPlotCode(r) || 'N/A';
+    row['ชื่อพืช'] = getCropName(r) || 'N/A';
+    row['กลุ่มตลาด'] = getMarketGroup(r) || 'N/A';
+    row['อำเภอ'] = getDistrict(r) || 'N/A';
+    row['ตำบล'] = getSubdistrict(r) || 'N/A';
+    row['พื้นที่ปลูก (ไร่)'] = r._area;
+    row['ปริมาณการผลิต (กก.)'] = r._output;
+    row['สถานะ'] = getStatus(r) || 'N/A';
+    row['ชนิดแปลง'] = getPlotType(r) || 'N/A';
+    return row;
+  });
+  const csv = Papa.unparse(csvData);
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'Lampang_GAP_Export_' + new Date().toISOString().slice(0, 10) + '.csv';
+  link.click();
+}
+
+function toggleNotifications() {
+  alert('ศูนย์แจ้งเตือน:\n- ตรวจสอบสถานะใบรับรอง GAP\n- ติดตามการต่ออายุใบรับรอง\n- แจ้งเตือนแปลงใกล้หมดอายุ');
+}
+
+// ===== RESPONSIVE =====
+function checkResponsive() {
+  const btn = document.getElementById('menuBtn');
+  if (window.innerWidth <= 1024) {
+    btn.style.display = 'block';
+  } else {
+    btn.style.display = 'none';
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+window.addEventListener('resize', checkResponsive);
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  checkResponsive();
+  loadData();
+});
+</script>
+</body>
+</html>
